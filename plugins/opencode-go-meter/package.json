@@ -1,7 +1,7 @@
 {
   "name": "pi-opencode-go-meter",
   "version": "0.1.0",
-  "description": "Barras de uso de OpenCode Go en la interfaz de Pi",
+  "description": "Indicador de uso de OpenCode Go en el footer de Pi",
   "type": "module",
   "keywords": ["pi-package", "pi-extension", "opencode-go"],
   "files": [
@@ -12,7 +12,6 @@
     "extensions": ["./extensions/*.ts"]
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-tui": "*"
+    "@earendil-works/pi-coding-agent": "*"
   }
 }

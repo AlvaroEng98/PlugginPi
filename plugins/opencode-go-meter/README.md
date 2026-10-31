@@ -1,6 +1,6 @@
 # pi-opencode-go-meter
 
-Extensión de Pi que presenta el uso de OpenCode Go como una barra fina, alineada a la derecha en un widget debajo del editor. Muestra **una ventana a la vez** y rota entre 5 horas, semanal y mensual cada 4 segundos por defecto.
+Extensión de Pi que presenta el uso de OpenCode Go como un indicador en el footer. Muestra **una ventana a la vez** y rota entre 5 horas, semanal y mensual cada 4 segundos por defecto. Si `pi-status-line` también está activo, el indicador se alinea a la derecha de la misma fila que la ruta y el estado Git; sin ese plugin aparece como estado de extensión en el footer estándar.
 
 La barra representa el **porcentaje usado**. Los datos se actualizan cada 60 segundos por defecto. Configura `OPENCODE_GO_ROTATE_SECONDS` para cambiar la rotación (2–60 s) y `OPENCODE_GO_REFRESH_SECONDS` para cambiar la consulta de datos (15–3600 s).
 
@@ -23,7 +23,7 @@ Después reinicia Pi o recarga las extensiones. Para ocultar la barra compacta d
 
 ## Uso
 
-- El widget aparece al iniciar una sesión TUI si hay credenciales `opencode-go` configuradas.
+- El indicador aparece al iniciar una sesión TUI si hay credenciales `opencode-go` configuradas.
 - `/go-meter` fuerza una consulta y muestra los porcentajes y tiempos de reinicio.
 - La frecuencia predeterminada se cambia al iniciar Pi, por ejemplo:
 

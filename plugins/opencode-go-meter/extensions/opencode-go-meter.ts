@@ -1,5 +1,4 @@
-import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const STATUS_KEY = "opencode-go-meter";
 const USAGE_URL = "https://opencode.ai/zen/go/v1/usage";
@@ -67,23 +66,14 @@ function parseUsage(value: unknown): GoUsage {
   return usage as GoUsage;
 }
 
-function makeBar(percent: number, cells: number, theme: Theme): string {
+function makeBar(percent: number, cells: number): string {
   const bounded = Math.max(0, Math.min(100, percent));
   const filled = Math.round((bounded / 100) * cells);
-  return theme.fg("accent", "─".repeat(filled)) + theme.fg("dim", "─".repeat(cells - filled));
+  return "━".repeat(filled) + "─".repeat(cells - filled);
 }
 
-function renderLine(
-  usage: GoUsage | undefined,
-  windowIndex: number,
-  error: boolean,
-  width: number,
-  theme: Theme,
-): string {
-  if (!usage) {
-    const label = error ? "Go usage · sin conexión" : "Go usage · consultando…";
-    return `${" ".repeat(Math.max(0, width - visibleWidth(label)))}${truncateToWidth(label, width)}`;
-  }
+function renderStatus(usage: GoUsage | undefined, windowIndex: number, error: boolean): string {
+  if (!usage) return error ? "Go usage · sin conexión" : "Go usage · consultando…";
 
   const windows = [
     { label: "5h", value: usage.rolling },
@@ -91,10 +81,7 @@ function renderLine(
     { label: "mes", value: usage.monthly },
   ];
   const current = windows[windowIndex % windows.length];
-  const cells = width >= 38 ? 12 : width >= 28 ? 8 : 4;
-  const text = `${theme.fg("muted", current.label)} ${makeBar(current.value.percent, cells, theme)} ${Math.round(current.value.percent)}%`;
-  const safeText = truncateToWidth(text, width, theme.fg("dim", "…"));
-  return `${" ".repeat(Math.max(0, width - visibleWidth(safeText)))}${safeText}`;
+  return `${current.label} ${makeBar(current.value.percent, 12)} ${Math.round(current.value.percent)}%`;
 }
 
 function resetIn(iso: string): string {
@@ -134,34 +121,9 @@ export default function (pi: ExtensionAPI) {
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
   let rotationTimer: ReturnType<typeof setInterval> | undefined;
   let visibleWindowIndex = 0;
-  let requestRender: (() => void) | undefined;
 
-  function clearWidget(ctx: ExtensionContext): void {
-    try {
-      ctx.ui.setWidget(STATUS_KEY, undefined);
-    } catch {
-      // The UI may already be disposed during reload or shutdown.
-    }
-  }
-
-  function installWidget(ctx: ExtensionContext): void {
-    if (ctx.mode !== "tui") return;
-    ctx.ui.setWidget(
-      STATUS_KEY,
-      (tui, theme) => {
-        requestRender = () => tui.requestRender();
-        return {
-          render(width: number): string[] {
-            return [renderLine(usage, visibleWindowIndex, lastError, width, theme)];
-          },
-          invalidate() {},
-          dispose() {
-            requestRender = undefined;
-          },
-        };
-      },
-      { placement: "belowEditor" },
-    );
+  function publishStatus(ctx: ExtensionContext): void {
+    ctx.ui.setStatus(STATUS_KEY, renderStatus(usage, visibleWindowIndex, lastError));
   }
 
   async function refresh(ctx: ExtensionContext): Promise<void> {
@@ -175,20 +137,20 @@ export default function (pi: ExtensionAPI) {
       lastError = true;
     } finally {
       inFlight = false;
-      requestRender?.();
+      publishStatus(ctx);
     }
   }
 
   pi.on("session_start", async (_event, ctx) => {
     if (ctx.mode !== "tui") return;
-    installWidget(ctx);
+    publishStatus(ctx);
     await refresh(ctx);
     refreshTimer = setInterval(() => {
       void refresh(ctx);
     }, getRefreshIntervalMs());
     rotationTimer = setInterval(() => {
       visibleWindowIndex = (visibleWindowIndex + 1) % 3;
-      requestRender?.();
+      publishStatus(ctx);
     }, getRotationIntervalMs());
   });
 
@@ -198,8 +160,11 @@ export default function (pi: ExtensionAPI) {
     refreshTimer = undefined;
     rotationTimer = undefined;
     inFlight = false;
-    requestRender = undefined;
-    clearWidget(ctx);
+    try {
+      ctx.ui.setStatus(STATUS_KEY, undefined);
+    } catch {
+      // The UI may already be disposed during reload or shutdown.
+    }
   });
 
   pi.registerCommand("go-meter", {
