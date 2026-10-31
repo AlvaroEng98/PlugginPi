@@ -6,6 +6,9 @@ const USAGE_URL = "https://opencode.ai/zen/go/v1/usage";
 const DEFAULT_REFRESH_SECONDS = 60;
 const MIN_REFRESH_SECONDS = 15;
 const MAX_REFRESH_SECONDS = 3600;
+const DEFAULT_ROTATE_SECONDS = 4;
+const MIN_ROTATE_SECONDS = 2;
+const MAX_ROTATE_SECONDS = 60;
 
 type UsageWindow = {
   status: "ok" | "rate-limited";
@@ -27,6 +30,14 @@ function getRefreshIntervalMs(): number {
     ? configured
     : DEFAULT_REFRESH_SECONDS;
   return Math.min(MAX_REFRESH_SECONDS, Math.max(MIN_REFRESH_SECONDS, seconds)) * 1000;
+}
+
+function getRotationIntervalMs(): number {
+  const configured = Number(process.env.OPENCODE_GO_ROTATE_SECONDS);
+  const seconds = Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_ROTATE_SECONDS;
+  return Math.min(MAX_ROTATE_SECONDS, Math.max(MIN_ROTATE_SECONDS, seconds)) * 1000;
 }
 
 function isUsageWindow(value: unknown): value is UsageWindow {
@@ -59,30 +70,29 @@ function parseUsage(value: unknown): GoUsage {
 function makeBar(percent: number, cells: number, theme: Theme): string {
   const bounded = Math.max(0, Math.min(100, percent));
   const filled = Math.round((bounded / 100) * cells);
-  return theme.fg("accent", "█".repeat(filled)) + theme.fg("dim", "░".repeat(cells - filled));
+  return theme.fg("accent", "─".repeat(filled)) + theme.fg("dim", "─".repeat(cells - filled));
 }
 
-function renderLine(usage: GoUsage | undefined, error: boolean, width: number, theme: Theme): string {
+function renderLine(
+  usage: GoUsage | undefined,
+  windowIndex: number,
+  error: boolean,
+  width: number,
+  theme: Theme,
+): string {
   if (!usage) {
     const label = error ? "Go usage · sin conexión" : "Go usage · consultando…";
     return `${" ".repeat(Math.max(0, width - visibleWidth(label)))}${truncateToWidth(label, width)}`;
   }
 
-  const cells = width >= 62 ? 8 : width >= 47 ? 5 : width >= 34 ? 3 : 1;
-  const compact = width < 28;
-  const divider = theme.fg("dim", " · ");
-  const rows = [
-    { label: compact ? "5h" : "5h", value: usage.rolling },
-    { label: compact ? "S" : "sem", value: usage.weekly },
-    { label: compact ? "M" : "mes", value: usage.monthly },
+  const windows = [
+    { label: "5h", value: usage.rolling },
+    { label: "sem", value: usage.weekly },
+    { label: "mes", value: usage.monthly },
   ];
-  const text = rows
-    .map(({ label, value }) => {
-      const percent = `${Math.round(value.percent)}%`;
-      if (compact) return `${theme.fg("muted", label)} ${percent}`;
-      return `${theme.fg("muted", label)} ${makeBar(value.percent, cells, theme)} ${percent}`;
-    })
-    .join(divider);
+  const current = windows[windowIndex % windows.length];
+  const cells = width >= 38 ? 12 : width >= 28 ? 8 : 4;
+  const text = `${theme.fg("muted", current.label)} ${makeBar(current.value.percent, cells, theme)} ${Math.round(current.value.percent)}%`;
   const safeText = truncateToWidth(text, width, theme.fg("dim", "…"));
   return `${" ".repeat(Math.max(0, width - visibleWidth(safeText)))}${safeText}`;
 }
@@ -122,6 +132,8 @@ export default function (pi: ExtensionAPI) {
   let lastError = false;
   let inFlight = false;
   let refreshTimer: ReturnType<typeof setInterval> | undefined;
+  let rotationTimer: ReturnType<typeof setInterval> | undefined;
+  let visibleWindowIndex = 0;
   let requestRender: (() => void) | undefined;
 
   function clearWidget(ctx: ExtensionContext): void {
@@ -140,7 +152,7 @@ export default function (pi: ExtensionAPI) {
         requestRender = () => tui.requestRender();
         return {
           render(width: number): string[] {
-            return [renderLine(usage, lastError, width, theme)];
+            return [renderLine(usage, visibleWindowIndex, lastError, width, theme)];
           },
           invalidate() {},
           dispose() {
@@ -174,11 +186,17 @@ export default function (pi: ExtensionAPI) {
     refreshTimer = setInterval(() => {
       void refresh(ctx);
     }, getRefreshIntervalMs());
+    rotationTimer = setInterval(() => {
+      visibleWindowIndex = (visibleWindowIndex + 1) % 3;
+      requestRender?.();
+    }, getRotationIntervalMs());
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     if (refreshTimer) clearInterval(refreshTimer);
+    if (rotationTimer) clearInterval(rotationTimer);
     refreshTimer = undefined;
+    rotationTimer = undefined;
     inFlight = false;
     requestRender = undefined;
     clearWidget(ctx);

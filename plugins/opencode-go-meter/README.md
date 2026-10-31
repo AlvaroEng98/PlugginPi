@@ -1,12 +1,8 @@
 # pi-opencode-go-meter
 
-Extensión de Pi que presenta el uso de OpenCode Go como barras alineadas a la derecha, en un widget debajo del editor:
+Extensión de Pi que presenta el uso de OpenCode Go como una barra fina, alineada a la derecha en un widget debajo del editor. Muestra **una ventana a la vez** y rota entre 5 horas, semanal y mensual cada 4 segundos por defecto.
 
-- ventana móvil de 5 horas;
-- límite semanal;
-- límite mensual.
-
-Las barras representan el **porcentaje usado**. Se actualizan cada 60 segundos por defecto. Para cambiar el intervalo, configura `OPENCODE_GO_REFRESH_SECONDS`; se limita a entre 15 y 3600 segundos.
+La barra representa el **porcentaje usado**. Los datos se actualizan cada 60 segundos por defecto. Configura `OPENCODE_GO_ROTATE_SECONDS` para cambiar la rotación (2–60 s) y `OPENCODE_GO_REFRESH_SECONDS` para cambiar la consulta de datos (15–3600 s).
 
 ## Requisitos
 

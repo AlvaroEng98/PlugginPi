@@ -6,7 +6,7 @@ Monorepo para las extensiones de Pi que usamos y publicamos. Cada plugin vive en
 
 | Plugin | Descripción | Instalación local |
 |---|---|---|
-| [`opencode-go-meter`](./plugins/opencode-go-meter/) | Barras de cuota de OpenCode Go en el lado derecho, con actualización periódica | `pi install ./plugins/opencode-go-meter` |
+| [`opencode-go-meter`](./plugins/opencode-go-meter/) | Barra fina de cuota de OpenCode Go a la derecha; rota entre 5 h, semanal y mensual | `pi install ./plugins/opencode-go-meter` |
 
 ## Estructura para añadir otro plugin
 
