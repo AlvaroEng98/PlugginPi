@@ -1,0 +1,22 @@
+{
+  "name": "pi-subagent-dashboard",
+  "version": "0.1.0",
+  "description": "Subagentes de Pi con salida en vivo, selección, mensajes y cancelación",
+  "type": "module",
+  "keywords": ["pi-package", "pi-extension", "subagents", "dashboard"],
+  "files": [
+    "extensions/",
+    "agents/",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": ["./extensions/subagent-dashboard.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}
